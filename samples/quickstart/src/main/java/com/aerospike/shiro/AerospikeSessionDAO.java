@@ -27,19 +27,19 @@ public class AerospikeSessionDAO implements SessionDAO {
 	private final String namespace = "test";
 	private final String setname = "sessions";
 	private final String binname = "data";
-	
+
 	private Integer maxInactiveIntervalInSeconds = 1800;
-	
+
 	private AerospikeClient client;
-	
-    private static final transient Logger log = LoggerFactory.getLogger(AerospikeSessionDAO.class);
-    
+
+	private static final transient Logger log = LoggerFactory.getLogger(AerospikeSessionDAO.class);
+
 	public AerospikeSessionDAO() {
-        ClientPolicy policy = new ClientPolicy();
-        policy.failIfNotConnected = true;
-        client = new AerospikeClient(policy, "localhost", 3000);
+		ClientPolicy policy = new ClientPolicy();
+		policy.failIfNotConnected = true;
+		client = new AerospikeClient(policy, "localhost", 3000);
 	}
-	
+
 	public Serializable create(Session session) {
 		log.info("Creating a session.");
 		String id =  UUID.randomUUID().toString();
@@ -79,29 +79,29 @@ public class AerospikeSessionDAO implements SessionDAO {
 			throw new UnknownSessionException();
 		}
 	}
-	
+
 	public Collection<Session> getActiveSessions() {
 		final Set<Session> sessions = new HashSet<Session>();
 		
 		try {
-            ScanPolicy policy = new ScanPolicy();
-            policy.concurrentNodes = true;
-            policy.priority = Priority.HIGH;
-            policy.includeBinData = true;
+			ScanPolicy policy = new ScanPolicy();
+			policy.concurrentNodes = true;
+			policy.priority = Priority.HIGH;
+			policy.includeBinData = true;
 
-            client.scanAll(policy, this.namespace, this.setname, new ScanCallback() {
-                public void scanCallback(Key key, Record record)
-                        throws AerospikeException {
-                	sessions.add((Session)record.getValue("data"));
-                }
-            }, "data");
-        } catch (AerospikeException e) {
-        	e.printStackTrace();
-        }
+			client.scanAll(policy, this.namespace, this.setname, new ScanCallback() {
+				public void scanCallback(Key key, Record record)
+						throws AerospikeException {
+					sessions.add((Session)record.getValue("data"));
+				}
+			}, "data");
+		} catch (AerospikeException e) {
+			e.printStackTrace();
+		}
 		
 		return sessions;
 	}
-	
+
 	private void storeSession(String id, Session session) {
 		Key key = new Key(this.namespace, this.setname, id);
 		Bin bin = new Bin(binname, session);
