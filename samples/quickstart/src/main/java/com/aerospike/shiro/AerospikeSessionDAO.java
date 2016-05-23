@@ -7,8 +7,7 @@ import java.util.UUID;
 
 import org.apache.shiro.session.Session;
 import org.apache.shiro.session.UnknownSessionException;
-import org.apache.shiro.session.mgt.SimpleSession;
-import org.apache.shiro.session.mgt.eis.SessionDAO;
+import org.apache.shiro.session.mgt.eis.CachingSessionDAO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,7 +22,7 @@ import com.aerospike.client.policy.Priority;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
 
-public class AerospikeSessionDAO implements SessionDAO {
+public class AerospikeSessionDAO extends CachingSessionDAO {
 	private final String namespace = "test";
 	private final String setname = "sessions";
 	private final String binname = "data";
@@ -40,21 +39,22 @@ public class AerospikeSessionDAO implements SessionDAO {
 		client = new AerospikeClient(policy, "localhost", 3000);
 	}
 
-	public Serializable create(Session session) {
+	public Serializable doCreate(Session session) {
 		log.info("Creating a session.");
 		String id =  UUID.randomUUID().toString();
-		((SimpleSession)session).setId(id);
+		assignSessionId(session, id);
+		
 		this.storeSession(id, session);
 		return id;
 	}
 
-	public void delete(Session session) {
+	public void doDelete(Session session) {
 		log.info("Deleting session " + session.getId());
 		Key key = new Key(this.namespace, this.setname, (String)session.getId());
 		client.delete(null, key);
 	}
 
-	public Session readSession(Serializable sessionId) throws UnknownSessionException {
+	public Session doReadSession(Serializable sessionId) throws UnknownSessionException {
 		log.info("Reading session " + (String)sessionId);
 		Session session = null;
 		
@@ -69,7 +69,7 @@ public class AerospikeSessionDAO implements SessionDAO {
 		return session;
 	}
 
-	public void update(Session session) throws UnknownSessionException {
+	public void doUpdate(Session session) throws UnknownSessionException {
 		log.info("Updating session " + (String)session.getId());
 		Key key = new Key(this.namespace, this.setname, (String)session.getId());
 		Record rec = client.get(null, key);
